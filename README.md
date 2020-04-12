@@ -3,14 +3,12 @@
 http://www.waveshare.net/wiki/2.7inch_e-Paper_HAT
 
 ## Depends:
-- wiringpi
-- bcm2835
-- python-pip
-- python-pil
+- python-pillow
 - python-numpy
 - RPi.GPIO
 - spidev
-
+- python-pygame
+- wqy-bitmapfont
 ---
 ## Pin
  |E-Paper Screen | Raspberry Pi |
