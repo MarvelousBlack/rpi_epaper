@@ -62,6 +62,7 @@ class RaspberryPi:
         self.SPI.writebytes(data)
 
     def module_init(self):
+        self.SPI.open(0,0)
         self.GPIO.setmode(self.GPIO.BCM)
         self.GPIO.setwarnings(False)
         self.GPIO.setup(self.RST_PIN, self.GPIO.OUT)
