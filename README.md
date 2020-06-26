@@ -1,6 +1,5 @@
-# pi-e-paper-2.7
-
-http://www.waveshare.net/wiki/2.7inch_e-Paper_HAT
+# rpi_epaper
+A python library to easy draw on Waveshare e-Paper HAT on Raspberry Pi.
 
 ## Depends:
 - python-pillow
@@ -9,7 +8,7 @@ http://www.waveshare.net/wiki/2.7inch_e-Paper_HAT
 - spidev
 - python-pygame
 - wqy-bitmapfont
----
+
 ## Pin
  |E-Paper Screen | Raspberry Pi |
  |:-:|:-:|
@@ -21,3 +20,7 @@ http://www.waveshare.net/wiki/2.7inch_e-Paper_HAT
  | D/C | 22 (Physical, BCM: 25) |
  | RES | 11 (Physical, BCM: 17) |
  | BUSY| 18 (Physical, BCM: 24) |
+
+## Supported epaper
+#### waveshare 2.7inch_e-Paper (http://www.waveshare.net/wiki/2.7inch_e-Paper_HAT)
+Support BW mode , 4gray mode and partial reflash.
