@@ -49,6 +49,7 @@ SPI_BUS         = 0
 SPI_DEVICE      = 0
 
 SPI = spidev.SpiDev()
+logger = logging.getLogger('epdconfig')
 
 def digital_write(pin, value):
     GPIO.output(pin, value)
@@ -63,7 +64,7 @@ def spi_writebyte(data):
         SPI.writebytes(data)
 
 def module_init():
-    logging.debug("Open and setting SPI")
+    logger.debug("Open and setting SPI")
     SPI.open(SPI_BUS,SPI_DEVICE)
     GPIO.setmode(GPIO.BCM)
     GPIO.setwarnings(False)
@@ -76,10 +77,10 @@ def module_init():
     return 0
 
 def module_exit():
-      logging.debug("Close SPI")
+      logger.debug("Close SPI")
       SPI.close()
 
-      logging.debug("Close 5V, EDP Module enters 0 power consumption ...")
+      logger.debug("Close 5V, EDP Module enters 0 power consumption ...")
       GPIO.output(RST_PIN, GPIO.LOW)
       GPIO.output(DC_PIN, GPIO.LOW)
 
@@ -107,7 +108,7 @@ def reset():
     delay_ms(200)
 
 def wait_idle():
-    logging.debug("Waitting e-Paper")
+    logger.debug("Waitting e-Paper")
     while(digital_read(BUSY_PIN) == GPIO.LOW):      #  LOW: idle, HIGH: busy
         delay_ms(100)
-    logging.debug("E-Paper is idele")
+    logger.debug("E-Paper is idele")

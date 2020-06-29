@@ -10,6 +10,8 @@ from PIL import Image
 from math import floor, ceil
 
 
+logger = logging.getLogger('epd2in7')
+
 # Display resolution
 EPD_WIDTH       = 176
 EPD_HEIGHT      = 264
@@ -198,13 +200,13 @@ class EPD:
         pixels = img_gray.load()
 
         if(imwidth == width and imheight == height):
-             logging.debug("Vertical image")
+             logger.debug("Vertical image")
              for y in range(imheight):
                 for x in range(imwidth):
                     buf_0[(x + y * width) // 8] |= ((pixels[x,y]>>7) << (~x % 8))
                     buf_1[(x + y * width) // 8] |= ((0b01 & (pixels[x,y]>>6)) << (~x % 8))
         elif(imwidth == height and imheight == width):
-             logging.debug("Horizontal")
+             logger.debug("Horizontal")
              for y in range(imheight):
                 for x in range(imwidth):
                     newy = height - x - 1
@@ -253,7 +255,7 @@ class EPD:
         if ((w+x) > 176) or ((l+y) > 264):
             raise ValueError("reflash area is over the display area.")
 
-        logging.debug("Trying partial reflash")
+        logger.debug("Trying partial reflash")
         cx = x
         # X and W should be the multiple of 8
         x = _nearest_integer_of_8(x,round_up=True)
@@ -283,13 +285,13 @@ class EPD:
             epdconfig.send_data(buf_1[i])
 
         if l < 0x100 :
-            logging.debug("l < 0x100, use 0x16")
+            logger.debug("l < 0x100, use 0x16")
             epdconfig.send_command(0x16) # PARTIAL_DISPLAY_REFRESH
             self._send_partial_area(x,y,w,l,reflash=True)
             epdconfig.wait_idle()
         else:
             if mode == PARTIAL:
-                logging.debug("l > 100, use 0x16 twice")
+                logger.debug("l > 100, use 0x16 twice")
                 epdconfig.send_command(0x16) # PARTIAL_DISPLAY_REFRESH
                 self._send_partial_area(x,y,w,0xFF,reflash=True)
                 epdconfig.wait_idle()
@@ -297,11 +299,11 @@ class EPD:
                 self._send_partial_area(x,y+0xFE,w,l-0xFE,reflash=True)
                 epdconfig.wait_idle()
             else:
-                logging.debug("l > 100, use 0x12 reflash full screen")
+                logger.debug("l > 100, use 0x12 reflash full screen")
                 epdconfig.send_command(0x12) # DISPLAY_REFRESH
                 epdconfig.wait_idle()
 
-        logging.debug("Partial reflash done")
+        logger.debug("Partial reflash done")
         
 
 
