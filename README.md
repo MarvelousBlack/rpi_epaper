@@ -3,11 +3,8 @@ A python library to easy draw on Waveshare e-Paper HAT on Raspberry Pi.
 
 ## Depends:
 - python-pillow
-- python-numpy
 - RPi.GPIO
 - spidev
-- python-pygame
-- wqy-bitmapfont
 
 ## Pin
  |E-Paper Screen | Raspberry Pi |

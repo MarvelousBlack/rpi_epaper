@@ -5,7 +5,6 @@
 import logging
 from . import epdconfig
 from .lut_2in7 import BW_LUT,GrayLUT,Partial_LUT
-import numpy as np
 from PIL import Image
 from math import floor, ceil
 
