@@ -4,7 +4,7 @@
 
 import logging
 from . import epdconfig
-from .lut_2in7 import BW_LUT,GrayLUT,Partial_LUT
+from .lut_2in7 import BW_LUT,GrayLUT,Partial_LUT,Fast_LUT
 from PIL import Image
 from math import floor, ceil
 
@@ -23,6 +23,7 @@ GRAY4  = 0x00 #Blackest
 BW = 0x00
 GRAY = 0x01
 PARTIAL = 0x02
+FAST = 0x03
 
 def _nearest_integer_of_8(num,round_up=False):
     if round_up:
@@ -45,21 +46,24 @@ class EPD:
         self.cs_pin = epdconfig.CS_PIN
         self.width = EPD_WIDTH
         self.height = EPD_HEIGHT
-        self.GRAY1  = GRAY1 #white
+        self.GRAY1  = GRAY1 # white
         self.GRAY2  = GRAY2
-        self.GRAY3  = GRAY3 #gray
-        self.GRAY4  = GRAY4 #Blackest
-
-    def set_lut(self,mode):
+        self.GRAY3  = GRAY3 # gray
+        self.GRAY4  = GRAY4 # Blackest
+        self.last_frame = Image.new('L', (self.width, self.height), 255)
+        
+    def _set_lut(self,mode):
         if mode == BW:
             lut = BW_LUT
         elif mode == GRAY:
             lut = GrayLUT
         elif mode == PARTIAL:
             lut = Partial_LUT
+        elif mode == FAST:
+            lut = Fast_LUT
         else:
             raise ValueError('invalid mode')
-        
+
         epdconfig.send_command(0x20) # vcom
         for byte in lut.lut_vcom_dc:
             epdconfig.send_data(byte)
@@ -81,6 +85,9 @@ class EPD:
             epdconfig.send_data(byte)
 
     def init(self):
+        """init()
+        epaper hardware initialize
+        """
     # 4gray mode init is same as BW mode init
         if (epdconfig.module_init() != 0):
             return -1
@@ -141,16 +148,16 @@ class EPD:
         epdconfig.wait_idle()
         
         epdconfig.send_command(0x00) # PANEL_SETTING
-        epdconfig.send_data(0xBF) # KW-BF   KWR-AF    BWROTP 0f
+        epdconfig.send_data(0x3F) # KW-BF   KWR-AF    BWROTP 0f
         
         epdconfig.send_command(0x30) # PLL_CONTROL
         epdconfig.send_data(0x3A) # 3A 100HZ   29 150Hz 39 200HZ    31 171HZ
         
         epdconfig.send_command(0x61) #resolution setting
-        epdconfig.send_data (0x00) #176
-        epdconfig.send_data (0xb0)     	 
-        epdconfig.send_data (0x01) #264
-        epdconfig.send_data (0x08)
+        epdconfig.send_data (self.width >> 8) 
+        epdconfig.send_data (self.width & 0xFF)     	 
+        epdconfig.send_data (self.height >> 8) 
+        epdconfig.send_data (self.height & 0xFF)
         
         epdconfig.send_command(0x82) # VCM_DC_SETTING_REGISTER
         epdconfig.send_data(0x12)
@@ -164,7 +171,10 @@ class EPD:
         return 0
 
     def clear(self,gray=0xFF):
-        self.set_lut(BW)
+        """clear(gray)(gray: int)
+        clear screen
+        """
+        self._set_lut(BW)
         epdconfig.send_command(0x10)
         for i in range(0, int(self.width * self.height / 8)):
             epdconfig.send_data(gray)
@@ -173,8 +183,13 @@ class EPD:
             epdconfig.send_data(gray)
         epdconfig.send_command(0x12)
         epdconfig.wait_idle()
+        width, height = self.last_frame.size
+        self.last_frame = Image.new('L', (width, height), gray)
 
     def sleep(self):
+        """sleep()
+        e-paper to sleep mode
+        """
         epdconfig.send_command(0X50)
         epdconfig.send_data(0xf7)
         epdconfig.send_command(0X02)
@@ -188,7 +203,7 @@ class EPD:
 
         img_gray = img.convert('L')
 
-        if mode == BW or mode == PARTIAL:
+        if mode in [BW,PARTIAL,FAST]:
             img_gray = _pil1bit(img_gray)
         elif mode == GRAY:
             pass
@@ -199,13 +214,11 @@ class EPD:
         pixels = img_gray.load()
 
         if(imwidth == width and imheight == height):
-             logger.debug("Vertical image")
              for y in range(imheight):
                 for x in range(imwidth):
                     buf_0[(x + y * width) // 8] |= ((pixels[x,y]>>7) << (~x % 8))
                     buf_1[(x + y * width) // 8] |= ((0b01 & (pixels[x,y]>>6)) << (~x % 8))
         elif(imwidth == height and imheight == width):
-             logger.debug("Horizontal")
              for y in range(imheight):
                 for x in range(imwidth):
                     newy = height - x - 1
@@ -219,8 +232,13 @@ class EPD:
         return bufs
 
     def display_frame(self,img,mode=BW):
-        buf_0,buf_1=self._get_frame_buffer(img,mode,self.width,self.height)
-        self.set_lut(mode)
+        """display_frame(img,mode)(img: PIL.Image, mode:int)
+        draw frame on e-paper
+        """
+        buf_0, buf_1 = self._get_frame_buffer(img,mode,self.width,self.height)
+        self._set_lut(mode)
+        if mode == PARTIAL:
+            _, buf_0 = self._get_frame_buffer(self.last_frame,mode,self.width,self.height)
         epdconfig.send_command(0x10)
         for i in range(0, int(self.width * self.height / 8)):
             epdconfig.send_data(buf_0[i])
@@ -229,6 +247,7 @@ class EPD:
             epdconfig.send_data(buf_1[i])
         epdconfig.send_command(0x12) 
         epdconfig.wait_idle()
+        self.last_frame = img.convert('L')
 
     def _send_partial_area(self,x,y,w,l,reflash=False):
         epdconfig.send_data(x >> 8)
@@ -243,66 +262,58 @@ class EPD:
         epdconfig.send_data(l >> 8)
         epdconfig.send_data(l & 0xff)
 
-    def partial_display_frame(self,img,x,y,landscape=False,mode=PARTIAL):
-
-        w,l = img.size
-
-        if landscape:
-            x,y = y,x
-            w,l = l,w
-
-        if ((w+x) > 176) or ((l+y) > 264):
-            raise ValueError("reflash area is over the display area.")
-
+    def partial_display_frame(self,img,x_start,y_start,mode=PARTIAL):
+        """partial_display_frame(img,x_start,y_start,mode)(img: PIL.Image, x_start:int, y_start:int, mode:int)
+        Partial display frame. Different from the display_frame(), this function will only reflash the screen in a specific area, rather than full screen. The area size will depending on your give image.
+        This epaper only can reflash a area size equal 255 x 255.
+        """
         logger.debug("Trying partial reflash")
-        cx = x
-        # X and W should be the multiple of 8
-        x = _nearest_integer_of_8(x,round_up=True)
-        w = _nearest_integer_of_8(w)
+        pic_width, pic_height = img.size
 
-        if w == 0:
-            raise ValueError("Image width is too small!")
+        # I don't know why only 255 x 255 can reflash,so add a limit.
+        if pic_width > 0XFF or pic_height > 0xFF :
+            raise ValueError("partial reflash area only support 255x255")
+        
+        tmp_frame = self.last_frame.copy()
+        tmp_frame.paste(img,(x_start,y_start,x_start+pic_width,y_start+pic_height))
+
+        # X and W should be the multiple of 8
+        if self.last_frame.size == (self.height,self.width):
+            y_start = _nearest_integer_of_8(y_start)
+            pic_height = _nearest_integer_of_8(pic_height,round_up=True)
+            x, y, w, l = y_start, x_start, pic_height, pic_width
+        else:
+            x_start = _nearest_integer_of_8(x_start)
+            pic_width = _nearest_integer_of_8(pic_width,round_up=True)
+            x, y, w, l = x_start, y_start, pic_width, pic_height
+
+        if ( (x+w) > (self.width - 1)) or ( (y+l) > (self.height - 1)):
+              raise ValueError("reflash area is over the display area.")
 
         #crop
-        cx = x - cx
-        if landscape:
-            newimg = img.crop((0,cx,l,w))
-        else:
-            newimg = img.crop((cx,0,w,l)) 
-        
-        buf_0,buf_1=self._get_frame_buffer(newimg,mode,w,l)
-        self.set_lut(mode)
+        oldimg = self.last_frame.crop((x_start,y_start,x_start+pic_width,y_start+pic_height))
+        newimg = tmp_frame.crop((x_start,y_start,x_start+pic_width,y_start+pic_height))
+ 
+        buf_0, _ = self._get_frame_buffer(oldimg,mode,pic_width,pic_height)
+        _, buf_1 = self._get_frame_buffer(newimg,mode,pic_width,pic_height)
 
-        epdconfig.send_command(0x14) # PARTIAL_DATA_START_TRANSMISSION_1 
+        self._set_lut(mode)
+
+        epdconfig.send_command(0x14) # PARTIAL_DATA_START_TRANSMISSION_1(old data)
         self._send_partial_area(x,y,w,l)
         for i in range(0, w * l // 8):
             epdconfig.send_data(buf_0[i])
 
-        epdconfig.send_command(0x15) # PARTIAL_DATA_START_TRANSMISSION_2 
+        epdconfig.send_command(0x15) # PARTIAL_DATA_START_TRANSMISSION_2(new data)
         self._send_partial_area(x,y,w,l)
         for i in range(0, w * l // 8):
             epdconfig.send_data(buf_1[i])
 
-        if l < 0x100 :
-            logger.debug("l < 0x100, use 0x16")
-            epdconfig.send_command(0x16) # PARTIAL_DISPLAY_REFRESH
-            self._send_partial_area(x,y,w,l,reflash=True)
-            epdconfig.wait_idle()
-        else:
-            if mode == PARTIAL:
-                logger.debug("l > 100, use 0x16 twice")
-                epdconfig.send_command(0x16) # PARTIAL_DISPLAY_REFRESH
-                self._send_partial_area(x,y,w,0xFF,reflash=True)
-                epdconfig.wait_idle()
-                epdconfig.send_command(0x16) # PARTIAL_DISPLAY_REFRESH
-                self._send_partial_area(x,y+0xFE,w,l-0xFE,reflash=True)
-                epdconfig.wait_idle()
-            else:
-                logger.debug("l > 100, use 0x12 reflash full screen")
-                epdconfig.send_command(0x12) # DISPLAY_REFRESH
-                epdconfig.wait_idle()
+        epdconfig.send_command(0x16) # PARTIAL_DISPLAY_REFRESH
+        self._send_partial_area(x,y,w,l,reflash=True)
+        epdconfig.wait_idle()
+        self.last_frame = tmp_frame.convert('L')
 
-        logger.debug("Partial reflash done")
         
 
 
