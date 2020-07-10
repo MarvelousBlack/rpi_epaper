@@ -2,7 +2,7 @@
 from distutils.core import setup
 
 setup(name='libepd',
-      version='0.1',
+      version='0.2.0',
       description='A python library to easy draw on Waveshare e-Paper HAT on Raspberry Pi',
       author='megumifox',
       license="GPLv2",

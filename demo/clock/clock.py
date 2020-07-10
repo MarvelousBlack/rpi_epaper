@@ -24,7 +24,7 @@ import datetime
 from PIL import Image,ImageDraw,ImageFont
 import traceback
 #import locale
-sys.path.append(str(Path.cwd().parents[1]))
+#sys.path.append(str(Path.cwd().parents[1]))
 from libepd import epd2in7
 
 logging.basicConfig(level=logging.INFO)

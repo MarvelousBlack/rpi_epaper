@@ -109,6 +109,7 @@ def reset():
 
 def wait_idle():
     logger.debug("Waitting e-Paper")
+    #send_command(0x71)
     while(digital_read(BUSY_PIN) == GPIO.LOW):      #  LOW: idle, HIGH: busy
         delay_ms(100)
     logger.debug("E-Paper is idele")
