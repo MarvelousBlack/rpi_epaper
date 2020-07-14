@@ -27,6 +27,7 @@ Support BW mode , 4gray mode and partial reflash. I guess it also support wavesh
 
 ## Usage(Here using epd2in7 for example)
 This library uses GPIO, so you must have permission to access them.  
+Complete demo see `demo/test_demo/test_demo.py`
 ### Initialize the e-paper hardware: 
 ```
 from libepd import epd2in7
