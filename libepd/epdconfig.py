@@ -41,7 +41,7 @@ import spidev
 import RPi.GPIO as GPIO
 
 # Pin definition
-RST_PIN         = 17
+RST_PIN         = 23
 DC_PIN          = 25
 CS_PIN          = 8
 BUSY_PIN        = 24
@@ -103,7 +103,7 @@ def reset():
     digital_write(RST_PIN, GPIO.HIGH)
     delay_ms(200)
     digital_write(RST_PIN, GPIO.LOW)
-    delay_ms(10)
+    delay_ms(200)
     digital_write(RST_PIN, GPIO.HIGH)
     delay_ms(200)
 
