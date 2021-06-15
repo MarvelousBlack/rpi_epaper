@@ -287,7 +287,7 @@ class EPD:
             pic_width = _nearest_integer_of_8(pic_width,round_up=True)
             x, y, w, l = x_start, y_start, pic_width, pic_height
 
-        if ( (x+w) > (self.width - 1)) or ( (y+l) > (self.height - 1)):
+        if ( (x+w) > (self.width)) or ( (y+l) > (self.height)):
               raise ValueError("reflash area is over the display area.")
 
         #crop
